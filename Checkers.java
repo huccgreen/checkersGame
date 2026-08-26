@@ -67,6 +67,7 @@ public class Checkers extends JFrame implements ActionListener
    private static final Color NON_PLAYABLE_SQUARE = new Color(0xEEDFB6);
    private static final Color SELECTED_SQUARE = new Color(0xF4D03F);
    private static final Color DEST_SQUARE = new Color(0x82E0AA);
+   private static final Color WRONG_TURN_SQUARE = new Color(0xE74C3C);
    private static final Color PLAYER1_COLOR = new Color(0x1B4F72);
    private static final Color PLAYER2_COLOR = new Color(0xB03A2E);
 
@@ -479,9 +480,16 @@ public class Checkers extends JFrame implements ActionListener
 
          block[x1][y1].setBackground(SELECTED_SQUARE);
          highlightedDestinations = legalDestinations(x1,y1);
+
+         Icon clickedIcon = block[x1][y1].getIcon();
+         boolean isP1Piece = (clickedIcon==icon || clickedIcon==king);
+         boolean isP2Piece = (clickedIcon==icon2 || clickedIcon==king2);
+         boolean wrongTurn = (isP1Piece && clickedP1) || (isP2Piece && clickedP2);
+         Color destColor = wrongTurn ? WRONG_TURN_SQUARE : DEST_SQUARE;
+
          for (int[] d : highlightedDestinations)
          {
-            block[d[0]][d[1]].setBackground(DEST_SQUARE);
+            block[d[0]][d[1]].setBackground(destColor);
          }
       }
 
