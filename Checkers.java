@@ -54,10 +54,14 @@ public class Checkers extends JFrame implements ActionListener
    *player2 -- the initial player 2 icon
    *
    */
-   SmallWindow small = new SmallWindow();
+   ExitConfirmDialog exitDialog = new ExitConfirmDialog(this);
    private int player2Pieces=12;
    private int player1Pieces=12;
-   
+   private int player1Score=0;
+   private int player2Score=0;
+   private JLabel scoreLabel1;
+   private JLabel scoreLabel2;
+
    private static final int Rows = 8;
    private static final int Columns = 8;
    private boolean clickedOnce=false;
@@ -91,7 +95,7 @@ public class Checkers extends JFrame implements ActionListener
    ImageIcon icon = new ImageIcon( newimg );
 
    
-   private ImageIcon player2 = new ImageIcon("Player2.png");
+   private ImageIcon player2 = new ImageIcon("player2.png");
    Image img2 = player2.getImage();  
    Image newimg2 = img2.getScaledInstance( 100, 100,  java.awt.Image.SCALE_SMOOTH ) ;  
    ImageIcon icon2 = new ImageIcon( newimg2 );
@@ -111,8 +115,14 @@ public class Checkers extends JFrame implements ActionListener
    
    public static void main(String[] args)
    {
-      Checkers play = new Checkers();
-      play.setVisible(true);
+      SwingUtilities.invokeLater(new Runnable()
+      {
+         public void run()
+         {
+            Checkers play = new Checkers();
+            play.setVisible(true);
+         }
+      });
    }
 
    
@@ -124,17 +134,30 @@ public class Checkers extends JFrame implements ActionListener
       setSize(900,900);
       setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
     
-      addWindowListener(new WindowActions());
-      
+      addWindowListener(new WindowAdapter()
+      {
+         public void windowClosing(WindowEvent e)
+         {
+            exitDialog.setVisible(true);
+         }
+      });
+
       JPanel board = new JPanel();
-    
+
       setLayout(new BorderLayout());
-   
+
       board.setLayout(new GridLayout(8,8));
-    
-      add(board);
-    
-      block = new JButton[Rows][Columns]; 
+
+      add(board, BorderLayout.CENTER);
+
+      JPanel scorePanel = new JPanel(new GridLayout(1,2));
+      scoreLabel1 = new JLabel("Player 1 score: 0", SwingConstants.CENTER);
+      scoreLabel2 = new JLabel("Player 2 score: 0", SwingConstants.CENTER);
+      scorePanel.add(scoreLabel1);
+      scorePanel.add(scoreLabel2);
+      add(scorePanel, BorderLayout.NORTH);
+
+      block = new JButton[Rows][Columns];
     
       /*
       *
@@ -282,7 +305,17 @@ public class Checkers extends JFrame implements ActionListener
       }
    }
 
-    
+   /**
+   *Refreshes the on-screen score labels to match
+   *player1Score and player2Score.
+   */
+   public void updateScoreLabels()
+   {
+      scoreLabel1.setText("Player 1 score: "+player1Score);
+      scoreLabel2.setText("Player 2 score: "+player2Score);
+   }
+
+
    /**
    *
    *This method converts a string number to and integer
@@ -301,107 +334,6 @@ public class Checkers extends JFrame implements ActionListener
    {
       return Integer.parseInt(stringNumber);
    }
-
-   
-   public class SmallWindow extends JFrame
-   
-   {
-      public SmallWindow()
-      {
-
-         
-         setTitle("Confirm");
-         setSize(300,100);
-         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-         getContentPane().setBackground(Color.LIGHT_GRAY);
-         setLayout(new BorderLayout());
-         
-         JPanel buttonPanel = new JPanel();
-         buttonPanel.setLayout(new FlowLayout());
-         buttonPanel.setBackground(Color.LIGHT_GRAY);
-                        
-         JLabel sure = new JLabel("Are You Sure You Want To Exit?");
-         add(sure,BorderLayout.CENTER);              
-         
-         JButton cancel = new JButton("Cancel");
-         cancel.setBackground(Color.WHITE);
-         buttonPanel.add(cancel);
-         cancel.addActionListener(new actions());
-                        
-         JButton restart = new JButton("Restart");
-         restart.setBackground(Color.GREEN);
-         buttonPanel.add(restart);
-         restart.addActionListener(new actions());
-               
-         JButton exit = new JButton("Exit");
-         exit.setBackground(Color.RED);
-         buttonPanel.add(exit);
-         exit.addActionListener(new actions());
-                        
-         add(buttonPanel ,BorderLayout.SOUTH);
-                        
-                       
-         addWindowListener(new WindowActions());
-         
-         
-      }
-   }
-   
-   
-   
-    public class actions implements ActionListener
-   {
-      public void actionPerformed(ActionEvent e)
-      
-      {
-         String word = e.getActionCommand();
-         
-         if (word.equals("Exit"))
-         {
-            System.exit(0);
-         }
-         else if (word.equals("Cancel"))
-         
-         {
-            small.setVisible(false);
-            
-
-         }
-         
-         
-         else if (word.equals("Restart"))
-         
-         {
-            Checkers newGame = new Checkers();
-            newGame.setVisible(true);
-         }
-      
-      }
-   }
-
-   
-   
-   public class WindowActions implements WindowListener
-      {
-         public void windowOpened(WindowEvent e){}
-         
-         public void windowClosing(WindowEvent e)
-         
-         {  
-            //SmallWindow small = new SmallWindow();
-            small.setVisible(true);
-         }
-         
-         public void windowClosed(WindowEvent e){}
-         
-         public void windowIconified(WindowEvent e){}
-         
-         public void windowDeiconified(WindowEvent e){}
-         
-         public void windowActivated(WindowEvent e){}
-         
-         public void windowDeactivated(WindowEvent e){}
-      }
 
 
 
@@ -487,7 +419,9 @@ public class Checkers extends JFrame implements ActionListener
                      block[x1+1][y1+1].setIcon(null);
                      clickedP1=true;
                      clickedP2=false;
-                     player2Pieces--;   
+                     player2Pieces--;
+                     player1Score++;
+                     updateScoreLabels();
                  }
                
           else if (((x2==x1+2) && (y2==y1-2)) && ((block[x1+1][y1-1].getIcon()==icon2) ||  (block[x1+1][y1-1].getIcon()==king2)))
@@ -497,7 +431,9 @@ public class Checkers extends JFrame implements ActionListener
                     block[x1+1][y1-1].setIcon(null);
                     clickedP1=true;
                     clickedP2=false;
-                    player2Pieces-- ;
+                    player2Pieces--;
+                    player1Score++;
+                    updateScoreLabels();
                  }
             }
          
@@ -537,7 +473,9 @@ public class Checkers extends JFrame implements ActionListener
                       block[x1-1][y1+1].setIcon(null);
                       clickedP2=true;
                       clickedP1= false;
-                      player1Pieces--;         
+                      player1Pieces--;
+                      player2Score++;
+                      updateScoreLabels();
                    }   
            else if (((x2==x1-2) && (y2==y1-2)) && ((block[x1-1][y1-1].getIcon()==icon) || (block[x1-1][y1-1].getIcon()==king)))
                      {
@@ -547,6 +485,8 @@ public class Checkers extends JFrame implements ActionListener
                         clickedP2=true;
                         clickedP1= false;
                         player1Pieces--;
+                        player2Score++;
+                        updateScoreLabels();
                      }
             }
       
@@ -618,6 +558,8 @@ public class Checkers extends JFrame implements ActionListener
                clickedP1=true;
                clickedP2=false;
                player2Pieces--;
+               player1Score++;
+               updateScoreLabels();
             }
                   
             else if (((x2==x1+2) && (y2==y1-2)) && ((block[x1+1][y1-1].getIcon()==king2) || (block[x1+1][y1-1].getIcon()==icon2)))
@@ -628,6 +570,8 @@ public class Checkers extends JFrame implements ActionListener
                clickedP1=true;
                clickedP2=false;
                player2Pieces--;
+               player1Score++;
+               updateScoreLabels();
             }
             
             /**
@@ -657,6 +601,8 @@ public class Checkers extends JFrame implements ActionListener
                clickedP1=true;
                clickedP2=false;
                player2Pieces--;
+               player1Score++;
+               updateScoreLabels();
             }
             else if (((x2==x1-2) && (y2==y1-2)) && ((block[x1-1][y1-1].getIcon()==king2) || (block[x1-1][y1-1].getIcon()==icon2)))
             {
@@ -666,6 +612,8 @@ public class Checkers extends JFrame implements ActionListener
                clickedP1=true;
                clickedP2=false;
                player2Pieces--;
+               player1Score++;
+               updateScoreLabels();
             }
          }
               
@@ -707,6 +655,8 @@ public class Checkers extends JFrame implements ActionListener
                clickedP1=false;
                clickedP2=true;
                player1Pieces--;
+               player2Score++;
+               updateScoreLabels();
             }
                   
             else if(((x2==x1+2) && (y2==y1-2)) && ((block[x1+1][y1-1].getIcon()==king) || (block[x1+1][y1-1].getIcon()==icon)))
@@ -717,6 +667,8 @@ public class Checkers extends JFrame implements ActionListener
                clickedP1=false;
                clickedP2=true;
                player1Pieces--;
+               player2Score++;
+               updateScoreLabels();
             }
                  
                
@@ -745,6 +697,8 @@ public class Checkers extends JFrame implements ActionListener
                clickedP1=false;
                clickedP2=true;
                player1Pieces--;
+               player2Score++;
+               updateScoreLabels();
             }
             else if (((x2==x1-2) && (y2==y1-2)) && ((block[x1-1][y1-1].getIcon()==king) || (block[x1-1][y1-1].getIcon()==icon)))
             {
@@ -754,14 +708,30 @@ public class Checkers extends JFrame implements ActionListener
                clickedP1=false;
                clickedP2=true;
                player1Pieces--;
+               player2Score++;
+               updateScoreLabels();
             }
          }   
 
       }
    if(player1Pieces==0 || player2Pieces==0)
       {
-         SmallWindow win = new SmallWindow();
-         win.setVisible(true);
+         String winner = (player2Pieces==0) ? "Player 1" : "Player 2";
+         String message = winner+" wins!\nFinal score - Player 1: "+player1Score+"  Player 2: "+player2Score;
+         Object[] options = {"Restart","Exit"};
+         int choice = JOptionPane.showOptionDialog(this, message, "Game Over",
+            JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
+            null, options, options[0]);
+         if (choice == 1)
+         {
+            System.exit(0);
+         }
+         else
+         {
+            Checkers.this.dispose();
+            Checkers newGame = new Checkers();
+            newGame.setVisible(true);
+         }
       }
    
    
