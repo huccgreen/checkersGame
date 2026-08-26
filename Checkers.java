@@ -61,6 +61,14 @@ public class Checkers extends JFrame implements ActionListener
    private int player2Score=0;
    private JLabel scoreLabel1;
    private JLabel scoreLabel2;
+   private JLabel turnLabel;
+
+   private static final Color PLAYABLE_SQUARE = new Color(0x5C3A21);
+   private static final Color NON_PLAYABLE_SQUARE = new Color(0xEEDFB6);
+   private static final Color SELECTED_SQUARE = new Color(0xF4D03F);
+   private static final Color DEST_SQUARE = new Color(0x82E0AA);
+   private static final Color PLAYER1_COLOR = new Color(0x1B4F72);
+   private static final Color PLAYER2_COLOR = new Color(0xB03A2E);
 
    private static final int Rows = 8;
    private static final int Columns = 8;
@@ -71,7 +79,8 @@ public class Checkers extends JFrame implements ActionListener
    private int x1;
    private int y1;
    private boolean clickedP1 = false;
-   private boolean clickedP2 = false;
+   private boolean clickedP2 = true;
+   private java.util.List<int[]> highlightedDestinations = new java.util.ArrayList<int[]>();
    
    
    
@@ -119,6 +128,11 @@ public class Checkers extends JFrame implements ActionListener
       {
          public void run()
          {
+            try
+            {
+               UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+            }
+            catch (Exception ex) {}
             Checkers play = new Checkers();
             play.setVisible(true);
          }
@@ -131,9 +145,9 @@ public class Checkers extends JFrame implements ActionListener
    public Checkers()
    {
       super("Checkers");
-      setSize(900,900);
       setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-    
+      setResizable(false);
+
       addWindowListener(new WindowAdapter()
       {
          public void windowClosing(WindowEvent e)
@@ -147,15 +161,36 @@ public class Checkers extends JFrame implements ActionListener
       setLayout(new BorderLayout());
 
       board.setLayout(new GridLayout(8,8));
+      board.setPreferredSize(new Dimension(800,800));
 
       add(board, BorderLayout.CENTER);
 
-      JPanel scorePanel = new JPanel(new GridLayout(1,2));
+      JPanel statusPanel = new JPanel(new GridLayout(1,3));
+      statusPanel.setBackground(Color.DARK_GRAY);
+      Font statusFont = new Font("SansSerif", Font.BOLD, 18);
+
       scoreLabel1 = new JLabel("Player 1 score: 0", SwingConstants.CENTER);
+      scoreLabel1.setFont(statusFont);
+      scoreLabel1.setForeground(PLAYER1_COLOR);
+      scoreLabel1.setOpaque(true);
+      scoreLabel1.setBackground(Color.DARK_GRAY);
+
+      turnLabel = new JLabel("Player 1's turn", SwingConstants.CENTER);
+      turnLabel.setFont(statusFont);
+      turnLabel.setForeground(Color.WHITE);
+      turnLabel.setOpaque(true);
+      turnLabel.setBackground(Color.DARK_GRAY);
+
       scoreLabel2 = new JLabel("Player 2 score: 0", SwingConstants.CENTER);
-      scorePanel.add(scoreLabel1);
-      scorePanel.add(scoreLabel2);
-      add(scorePanel, BorderLayout.NORTH);
+      scoreLabel2.setFont(statusFont);
+      scoreLabel2.setForeground(PLAYER2_COLOR);
+      scoreLabel2.setOpaque(true);
+      scoreLabel2.setBackground(Color.DARK_GRAY);
+
+      statusPanel.add(scoreLabel1);
+      statusPanel.add(turnLabel);
+      statusPanel.add(scoreLabel2);
+      add(statusPanel, BorderLayout.NORTH);
 
       block = new JButton[Rows][Columns];
     
@@ -174,14 +209,17 @@ public class Checkers extends JFrame implements ActionListener
          for (int col=0;col < Columns; col++)
             {
                block[row][col] =  new JButton();
-               board.add(block[row][col]);       
+               block[row][col].setOpaque(true);
+               block[row][col].setBorderPainted(false);
+               block[row][col].setFocusPainted(false);
+               board.add(block[row][col]);
          
             if ((row%2==0))
                {  
                   if (col%2==0)
                   {
                
-                     block[row][col].setBackground(Color.GREEN);
+                     block[row][col].setBackground(PLAYABLE_SQUARE);
                      block[row][col].setActionCommand(row+" "+col);
                      block[row][col].addActionListener(this);
                   }
@@ -193,7 +231,7 @@ public class Checkers extends JFrame implements ActionListener
                   {  
                      if (row%2!=0)
                         {
-                           block[row][col].setBackground(Color.GREEN);               
+                           block[row][col].setBackground(PLAYABLE_SQUARE);               
                            block[row][col].setActionCommand(row+" "+col);
                            block[row][col].addActionListener(this);
                         }
@@ -219,14 +257,14 @@ public class Checkers extends JFrame implements ActionListener
                      {  
                         if (row%2==0)
                            {
-                              block[row][col].setBackground(Color.RED);  
+                              block[row][col].setBackground(NON_PLAYABLE_SQUARE);  
                            }
                      }
              else if ((row%2!=0))
                      {  
                         if (col%2==0)
                            {
-                              block[row][col].setBackground(Color.RED);                 
+                              block[row][col].setBackground(NON_PLAYABLE_SQUARE);                 
                            }
                      }
                }
@@ -298,11 +336,14 @@ public class Checkers extends JFrame implements ActionListener
             {  
                if (row%2!=0)
                   {
-                     block[row][col].setIcon(icon2);                 
+                     block[row][col].setIcon(icon2);
                   }
             }
           }
       }
+
+      pack();
+      setLocationRelativeTo(null);
    }
 
    /**
@@ -313,6 +354,74 @@ public class Checkers extends JFrame implements ActionListener
    {
       scoreLabel1.setText("Player 1 score: "+player1Score);
       scoreLabel2.setText("Player 2 score: "+player2Score);
+   }
+
+   /**
+   *Refreshes the turn indicator to reflect whose move it currently is.
+   */
+   public void updateTurnLabel()
+   {
+      turnLabel.setText(!clickedP1 ? "Player 1's turn" : "Player 2's turn");
+   }
+
+   private boolean inBounds(int row, int col)
+   {
+      return row>=0 && row<Rows && col>=0 && col<Columns;
+   }
+
+   /**
+   *Computes the legal destination squares for the piece at (row,col),
+   *for the purpose of highlighting them on selection. Mirrors the move
+   *rules applied in actionPerformed but does not enforce whose turn it is.
+   */
+   private java.util.List<int[]> legalDestinations(int row, int col)
+   {
+      java.util.List<int[]> moves = new java.util.ArrayList<int[]>();
+      Icon pieceIcon = block[row][col].getIcon();
+      boolean isP1 = (pieceIcon==icon || pieceIcon==king);
+      boolean isP2 = (pieceIcon==icon2 || pieceIcon==king2);
+      if (!isP1 && !isP2)
+      {
+         return moves;
+      }
+      boolean isKingPiece = (pieceIcon==king || pieceIcon==king2);
+
+      int[][] dirs;
+      if (isKingPiece)
+      {
+         dirs = new int[][]{{-1,-1},{-1,1},{1,-1},{1,1}};
+      }
+      else if (isP1)
+      {
+         dirs = new int[][]{{1,-1},{1,1}};
+      }
+      else
+      {
+         dirs = new int[][]{{-1,-1},{-1,1}};
+      }
+
+      for (int[] d : dirs)
+      {
+         int nr = row+d[0];
+         int nc = col+d[1];
+         if (inBounds(nr,nc) && block[nr][nc].getIcon()==null)
+         {
+            moves.add(new int[]{nr,nc});
+         }
+
+         int jr = row+2*d[0];
+         int jc = col+2*d[1];
+         if (inBounds(jr,jc) && block[jr][jc].getIcon()==null)
+         {
+            Icon midIcon = block[nr][nc].getIcon();
+            boolean midIsOpponent = isP1 ? (midIcon==icon2 || midIcon==king2) : (midIcon==icon || midIcon==king);
+            if (midIsOpponent)
+            {
+               moves.add(new int[]{jr,jc});
+            }
+         }
+      }
+      return moves;
    }
 
 
@@ -367,8 +476,15 @@ public class Checkers extends JFrame implements ActionListener
          y1 = convert(pairXY[1]);
          System.out.println("this is one: y:"+y1+" x:"+x1);
          clickedOnce = true;
-      }  
-         
+
+         block[x1][y1].setBackground(SELECTED_SQUARE);
+         highlightedDestinations = legalDestinations(x1,y1);
+         for (int[] d : highlightedDestinations)
+         {
+            block[d[0]][d[1]].setBackground(DEST_SQUARE);
+         }
+      }
+
       else
       {
          String pair2 = e.getActionCommand();
@@ -377,8 +493,15 @@ public class Checkers extends JFrame implements ActionListener
          y2 = convert(pairXY2[1]);
          System.out.println("this is two: y:"+y2+" x:"+x2);
          clickedOnce = false;
-      
-         
+
+         block[x1][y1].setBackground(PLAYABLE_SQUARE);
+         for (int[] d : highlightedDestinations)
+         {
+            block[d[0]][d[1]].setBackground(PLAYABLE_SQUARE);
+         }
+         highlightedDestinations.clear();
+
+
                  
          /**
          *
@@ -711,8 +834,9 @@ public class Checkers extends JFrame implements ActionListener
                player2Score++;
                updateScoreLabels();
             }
-         }   
+         }
 
+         updateTurnLabel();
       }
    if(player1Pieces==0 || player2Pieces==0)
       {
